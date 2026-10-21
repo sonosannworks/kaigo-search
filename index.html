@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="全国の介護保険事業所を、都道府県・市区町村・サービスの種類・名前で探せる検索ページです。">
+<title>介護保険事業所検索（全国版）</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@700&display=swap">
+<style>
+/* 全国版。レイアウト：スマホ1カラム。上に検索条件、下に事業所カード。昼間でも見やすい明るいライトモード固定、アクセントは爽やかなエメラルドグリーン */
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --ink: #1e293b;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --chip-bg: #f1f5f9;
+  --accent: #059669;        /* 選択中ボタン・主ボタンの塗り */
+  --accent-text: #047857;   /* 白背景に載せる緑の文字（読みやすさ優先で一段濃く） */
+  --accent-soft: #d1fae5;
+  --accent-soft-ink: #065f46;
+  --accent-ink: #ffffff;
+  --tag: #92400e;
+  --tag-soft: #fef3c7;
+  --focus: #10b981;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 2px 8px rgba(15, 23, 42, .05);
+  --font-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.65;
+}
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+header { display: flex; flex-direction: column; gap: 8px; }
+.eyebrow { font-size: 14px; letter-spacing: .08em; color: var(--accent-text); font-weight: 700; }
+.nb { display: inline-block; }
+h1 {
+  font-family: var(--font-display); font-size: clamp(26px, 7.2vw, 36px); line-height: 1.3;
+  margin: 0; text-wrap: balance;
+}
+.lead { margin: 0; color: var(--muted); font-size: 15px; }
+
+/* スマホは縦に1列、広い画面では左に条件・右に結果 */
+.layout { display: flex; flex-direction: column; gap: 24px; }
+.results { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 18px 16px; display: flex; flex-direction: column; gap: 20px;
+}
+.label { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: .04em; }
+.field { display: flex; flex-direction: column; gap: 10px; }
+
+.chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.chips.areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chip {
+  font: inherit; font-size: clamp(14px, 3.8vw, 16px); font-weight: 500; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+  min-height: 64px; padding: 10px 11px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--chip-bg); color: var(--ink);
+  line-height: 1.35;
+}
+.chip .name { min-width: 0; overflow-wrap: anywhere; }
+.chip .n {
+  font-size: 14px; font-weight: 700; color: var(--accent-soft-ink);
+  background: var(--accent-soft); border-radius: 999px; padding: 1px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.chip[aria-pressed="true"] { background: var(--accent-text); border-color: var(--accent-text); color: var(--accent-ink); font-weight: 700; }
+.chip[aria-pressed="true"] .n { background: var(--accent-ink); color: var(--accent-text); }
+.chip:focus-visible, .btn:focus-visible, input:focus-visible, a:focus-visible, .more:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.search { position: relative; }
+.search input {
+  width: 100%; font: inherit; font-size: 17px; color: var(--ink);
+  min-height: 56px; padding: 12px 14px 12px 46px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface);
+}
+.search svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; fill: var(--muted); }
+
+.result-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.result-head h2 { font-family: var(--font-display); font-size: 21px; line-height: 1.4; margin: 0; text-wrap: balance; }
+.count { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.count b { color: var(--ink); font-size: 26px; }
+
+.list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 18px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-soft-ink); }
+.tag.area { background: var(--tag-soft); color: var(--tag); }
+.card h3 { margin: 0; font-size: 20px; line-height: 1.4; overflow-wrap: anywhere; }
+.corp { margin: 0; font-size: 14px; color: var(--muted); }
+.meta { margin: 0; font-size: 16px; display: grid; grid-template-columns: 4em minmax(0, 1fr); gap: 4px 10px; }
+.meta dt { color: var(--muted); font-size: 14px; padding-top: 2px; }
+.meta dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tel-num { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 19px; letter-spacing: .03em; user-select: all; }
+
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.btn {
+  font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  min-height: 52px; padding: 8px; border-radius: 12px;
+  border: 2px solid var(--accent); color: var(--accent-text); background: var(--surface);
+}
+.btn.primary { background: var(--accent-text); border-color: var(--accent-text); color: var(--accent-ink); }
+.btn.copied { border-color: var(--muted); color: var(--muted); }
+
+.empty { text-align: center; color: var(--muted); padding: 36px 16px; background: var(--surface); border: 1.5px dashed var(--line); border-radius: 16px; margin: 0; }
+.more { font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; min-height: 56px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--accent-text); }
+
+footer { font-size: 14px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 18px; }
+footer a { color: var(--accent-text); font-weight: 700; }
+footer .credit { padding-top: 8px; border-top: 1px dashed var(--line); }
+.maker { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.maker-label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.town-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.town-link { padding: 12px 14px; }
+
+/* タブレット以上 */
+@media (min-width: 640px) {
+  .chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chips.areas { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .panel, .card { padding: 22px; }
+}
+/* パソコン：条件を左に固定、結果を右に2列 */
+/* パソコン：左に絞り込みのリスト、右に事業所を1行ずつ並べる一覧表示 */
+@media (min-width: 960px) {
+  body { font-size: 15px; }
+  .wrap { max-width: 1320px; gap: 20px; padding-block: 28px 56px; }
+  h1 { font-size: 30px; }
+  .lead { font-size: 14px; }
+  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); align-items: start; gap: 28px; }
+
+  /* 絞り込み：縦に並ぶ項目リスト */
+  .panel { position: sticky; top: 16px; padding: 18px 14px; gap: 18px; max-height: calc(100vh - 32px); overflow: auto; }
+  .label { font-size: 13px; color: var(--muted); padding-inline: 6px; }
+  .field { gap: 6px; }
+  .chips, .chips.areas { display: flex; flex-direction: column; gap: 2px; }
+  .chip {
+    flex-direction: row; justify-content: space-between; align-items: center;
+    min-height: 40px; padding: 6px 10px; border-radius: 8px; font-size: 15px;
+    background: transparent; border: none; box-shadow: none;
+  }
+  .chip:not([aria-pressed="true"]):hover { background: var(--chip-bg); }
+  .chip .n { background: transparent; color: var(--muted); font-size: 13px; padding: 0; }
+  .chip[aria-pressed="true"] .n { background: transparent; color: var(--accent-ink); }
+  .search input { min-height: 44px; font-size: 15px; padding-left: 40px; }
+  .search svg { width: 18px; height: 18px; left: 13px; }
+
+  /* 結果：表のように1行ずつ */
+  .results { gap: 12px; }
+  .result-head h2 { font-size: 20px; }
+  .count b { font-size: 22px; }
+  .list {
+    display: flex; flex-direction: column; gap: 0;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card {
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.5fr) 132px;
+    column-gap: 24px; row-gap: 4px; align-items: start;
+    padding: 16px 20px; border: none; border-radius: 0; box-shadow: none;
+    border-top: 1px solid var(--line);
+  }
+  .card:first-child { border-top: none; }
+  .card:hover { background: #fbfdfc; }
+  .card > .tags { grid-column: 1; grid-row: 1; }
+  .card > h3 { grid-column: 1; grid-row: 2; font-size: 17px; }
+  .card > .corp { grid-column: 1; grid-row: 3; font-size: 13px; }
+  .card > .meta { grid-column: 2; grid-row: 1 / span 3; font-size: 14px; grid-template-columns: 3.5em minmax(0, 1fr); gap: 2px 10px; align-self: center; }
+  .card > .meta dt { font-size: 12px; padding-top: 2px; }
+  .card .tel-num { font-size: 16px; }
+  .card > .actions { grid-column: 3; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 6px; margin: 0; align-self: center; }
+  .tag { font-size: 12px; padding: 2px 8px; }
+  .btn { min-height: 36px; font-size: 14px; padding: 4px 8px; border-width: 1.5px; border-radius: 8px; }
+  .more { min-height: 48px; font-size: 15px; }
+
+  /* 紹介セクション・フッター */
+  .share-section { grid-template-columns: 180px minmax(0, 1fr); }
+  .share-section .qr-box { width: 180px; }
+  .share-actions.inline { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* マウス操作のパソコンでは「電話する」を隠し、番号表示とコピーを使う */
+@media (min-width: 960px) and (hover: hover) and (pointer: fine) {
+  .card .btn.primary[href^="tel:"] { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .chip, .more { transition: background-color .15s, color .15s; } }
+
+/* 上部バー（メニュー・QR） */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.topbar .eyebrow { white-space: nowrap; }
+.topbar-actions { display: flex; gap: 6px; flex: none; }
+@media (max-width: 374px) { .topbar .eyebrow { white-space: normal; font-size: 12px; } .icon-btn { padding: 8px 9px; font-size: 13px; } }
+.icon-btn {
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  min-height: 44px; padding: 8px 12px; border-radius: 999px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+}
+.icon-btn svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+.icon-btn.qr-btn { border-color: var(--accent-text); color: var(--accent-text); }
+.icon-btn:focus-visible, .sheet-link:focus-visible, .share-btn:focus-visible, .sheet-close:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ダイアログ（メニュー・QR） */
+dialog.sheet {
+  border: none; padding: 0; border-radius: 20px; background: var(--surface); color: var(--ink);
+  width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, .25);
+}
+dialog.sheet::backdrop { background: rgba(15, 23, 42, .45); }
+.sheet-inner { padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sheet-head h2 { font-family: var(--font-display); font-size: 21px; margin: 0; }
+.sheet-close {
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; min-height: 44px; padding: 6px 14px;
+  border-radius: 999px; border: 1.5px solid var(--line); background: var(--chip-bg); color: var(--ink);
+}
+.sheet-nav { display: flex; flex-direction: column; gap: 10px; }
+.sheet-link {
+  font: inherit; font-size: 17px; font-weight: 700; text-align: left; cursor: pointer; text-decoration: none;
+  display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.sheet-link small { font-size: 14px; font-weight: 400; color: var(--muted); }
+
+/* QRコード */
+.qr { display: block; width: 100%; height: auto; }
+.qr-box { width: min(260px, 70vw); margin: 0 auto; padding: 12px; background: #ffffff; border: 1.5px solid var(--line); border-radius: 16px; }
+.qr-note { margin: 0; text-align: center; font-size: 15px; color: var(--muted); }
+.url-box {
+  font-size: 14px; color: var(--ink); background: var(--chip-bg); border-radius: 10px; padding: 10px 12px;
+  overflow-wrap: anywhere; user-select: all; font-variant-numeric: tabular-nums;
+}
+.share-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.share-btn {
+  font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; text-decoration: none; text-align: center;
+  display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 8px; border-radius: 12px;
+  border: 2px solid var(--accent-text); background: var(--surface); color: var(--accent-text);
+}
+.share-btn.primary { background: var(--accent-text); color: var(--accent-ink); }
+
+/* ページ下の紹介セクション */
+.share-section {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 20px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: center;
+}
+.share-section h2 { font-family: var(--font-display); font-size: 21px; margin: 0; }
+.share-section p { margin: 0; color: var(--muted); font-size: 15px; }
+.share-section .qr-box { width: min(200px, 60vw); }
+.share-text { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 640px) {
+  .share-section { grid-template-columns: 200px minmax(0, 1fr); padding: 24px; }
+  .share-section .qr-box { width: 200px; margin: 0; }
+  .share-actions.inline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media print { .topbar-actions, dialog { display: none !important; } }
+
+/* ===== 全国版で追加：地域の選択 ===== */
+.selects { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.select-wrap { position: relative; }
+.select-wrap select {
+  width: 100%; font: inherit; font-size: 17px; color: var(--ink); cursor: pointer;
+  min-height: 56px; padding: 12px 44px 12px 14px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface);
+  appearance: none; -webkit-appearance: none;
+}
+.select-wrap select:disabled { color: var(--muted); background: var(--chip-bg); cursor: not-allowed; }
+.select-wrap::after {
+  content: ""; position: absolute; right: 18px; top: 50%; width: 10px; height: 10px; pointer-events: none;
+  border-right: 2.5px solid var(--muted); border-bottom: 2.5px solid var(--muted); transform: translateY(-70%) rotate(45deg);
+}
+.select-wrap select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.sub-label { font-size: 13px; color: var(--muted); font-weight: 700; }
+.hidden { display: none !important; }
+
+.welcome {
+  background: var(--surface); border: 1.5px dashed var(--line); border-radius: 16px; padding: 28px 18px;
+  display: flex; flex-direction: column; gap: 10px; text-align: center; color: var(--muted); margin: 0;
+}
+.welcome strong { color: var(--ink); font-size: 18px; }
+.loading { text-align: center; color: var(--muted); padding: 36px 16px; margin: 0; }
+
+@media (min-width: 640px) {
+  .selects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .selects { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .select-wrap select { min-height: 44px; font-size: 15px; padding: 8px 36px 8px 10px; border-radius: 8px; }
+  .select-wrap::after { right: 14px; width: 8px; height: 8px; }
+  .sub-label { padding-inline: 6px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header id="top">
+    <div class="topbar">
+      <span class="eyebrow" id="eyebrow">全国版</span>
+      <div class="topbar-actions">
+        <button type="button" class="icon-btn qr-btn" data-open="qr-dialog" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3V3Zm2 2v4h4V5H5Zm8-2h8v8h-8V3Zm2 2v4h4V5h-4ZM3 13h8v8H3v-8Zm2 2v4h4v-4H5Zm10-2h2v2h-2v-2Zm2 2h2v2h-2v-2Zm2-2h2v2h-2v-2Zm-6 4h2v2h-2v-2Zm2 2h2v2h-2v-2Zm2-2h2v2h-2v-2Zm2 2h2v2h-2v-2Z"/></svg>QRコード
+        </button>
+        <button type="button" class="icon-btn" data-open="menu-dialog" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>メニュー
+        </button>
+      </div>
+    </div>
+    <h1 id="title"><span class="nb" id="title-place">全国の</span><span class="nb">介護保険事業所検索</span></h1>
+    <p class="lead">ケアマネジャー・ご家族向け。都道府県と市区町村を選んで、サービスの種類や事業所名から探せます。</p>
+  </header>
+
+  <div class="layout">
+  <section class="panel" aria-label="検索条件">
+    <div class="field">
+      <span class="label" id="lbl-place">地域</span>
+      <div class="selects" role="group" aria-labelledby="lbl-place">
+        <div class="select-wrap">
+          <select id="pref" aria-label="都道府県"><option value="">都道府県を選ぶ</option></select>
+        </div>
+        <div class="select-wrap">
+          <select id="city" aria-label="市区町村" disabled><option value="">市区町村を選ぶ</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="field hidden" id="ward-field">
+      <span class="label" id="lbl-ward">区</span>
+      <div class="chips areas" id="wards" role="group" aria-labelledby="lbl-ward"></div>
+    </div>
+    <div class="field hidden" id="group-field">
+      <span class="label" id="lbl-group">サービスの種類</span>
+      <div class="chips" id="groups" role="group" aria-labelledby="lbl-group"></div>
+    </div>
+    <div class="field hidden" id="q-field">
+      <label class="label" for="q">事業所名・住所・法人名</label>
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2a8 8 0 0 1 6.32 12.9l5.39 5.4-1.41 1.4-5.4-5.39A8 8 0 1 1 10 2Zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"/></svg>
+        <input id="q" type="search" placeholder="例：社会福祉法人、デイサービス" autocomplete="off">
+      </div>
+    </div>
+  </section>
+
+  <div class="results">
+  <section aria-live="polite" id="result-section" class="hidden">
+    <div class="result-head">
+      <h2 id="result-title">すべてのサービス</h2>
+      <span class="count"><b id="count">0</b> 件</span>
+    </div>
+  </section>
+
+  <div id="welcome" class="welcome">
+    <strong>まず地域を選んでください</strong>
+    <span>都道府県 → 市区町村の順に選ぶと、その地域の事業所が表示されます。政令指定都市は区でも絞り込めます。</span>
+  </div>
+  <div class="list" id="list"></div>
+  <button class="more" id="more" type="button" hidden>もっと見る</button>
+  </div>
+  </div>
+
+  <section class="share-section" id="share" aria-labelledby="share-title">
+    <div class="qr-box" data-qr></div>
+    <div class="share-text">
+      <h2 id="share-title">このページを紹介する</h2>
+      <p id="share-desc">スマホのカメラでQRコードを読み取ると、このページが開きます。地域を選んでからQRコードを作ると、その地域の検索結果が開くQRコードになります。</p>
+      <div class="share-actions inline">
+        <button type="button" class="share-btn primary" data-share>LINEなどで送る</button>
+        <button type="button" class="share-btn" data-copy-url>URLをコピー</button>
+        <button type="button" class="share-btn" data-save-card>チラシ用QR画像を保存</button>
+        <button type="button" class="share-btn" data-save-qr>QRコードだけを保存</button>
+      </div>
+    </div>
+  </section>
+
+  <footer id="about">
+    <span id="source">出典：厚生労働省 介護サービス情報公表システム オープンデータ</span>
+    <span>電話番号・営業日などは変わっていることがあります。ご利用の前に各事業所へご確認ください。</span>
+    <a id="kouhyou-link" href="https://www.kaigokensaku.mhlw.go.jp/" target="_blank" rel="noopener">介護サービス情報公表システムで詳しく調べる</a>
+    <span>このページは、国の公開データをもとに個人が作成したものです。国や自治体の公式ページではありません。</span>
+    <span class="credit">制作：<a href="https://sonosann-webai.net/" target="_blank" rel="noopener">sonosann Web&amp;AIサポート</a></span>
+  </footer>
+</div>
+
+<dialog class="sheet" id="qr-dialog" aria-labelledby="qr-dialog-title">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <h2 id="qr-dialog-title">QRコード</h2>
+      <button type="button" class="sheet-close" data-close>閉じる</button>
+    </div>
+    <div class="qr-box" data-qr></div>
+    <p class="qr-note" id="qr-note">スマホのカメラで読み取ると<br>このページが開きます</p>
+    <div class="url-box" id="share-url"></div>
+    <div class="share-actions">
+      <button type="button" class="share-btn primary" data-share>LINEなどで送る</button>
+      <button type="button" class="share-btn" data-copy-url>URLをコピー</button>
+      <button type="button" class="share-btn" data-save-card>チラシ用QR画像を保存</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="menu-dialog" aria-labelledby="menu-dialog-title">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <h2 id="menu-dialog-title">メニュー</h2>
+      <button type="button" class="sheet-close" data-close>閉じる</button>
+    </div>
+    <nav class="sheet-nav" aria-label="ページ内メニュー">
+      <a class="sheet-link" href="#top" data-close>事業所を探す<small>地域・種類・名前で検索</small></a>
+      <button type="button" class="sheet-link" data-open="qr-dialog">QRコードを表示<small>その場で読み取ってもらう</small></button>
+      <a class="sheet-link" href="#share" data-close>このページを紹介する<small>LINEで送る・URLコピー・QR画像の保存</small></a>
+      <a class="sheet-link" href="#about" data-close>このページについて<small>情報の出典と注意事項</small></a>
+      <button type="button" class="sheet-link" data-reset>地域を選び直す<small>都道府県の選択に戻る</small></button>
+    </nav>
+    <div class="maker">
+      <span class="maker-label">このページを作った人</span>
+      <a class="sheet-link" href="https://sonosann-webai.net/" target="_blank" rel="noopener">sonosann Web&amp;AIサポート<small>看護師・ケアマネ経験を活かした、介護事業所のHP制作・DX支援</small></a>
+    </div>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+// 公開先のURL（QRコード・共有ボタンで使う）
+const SITE_URL = 'https://start-reposi.vercel.app/kaigo/';
+const SITE_TITLE = '介護保険事業所検索';
+
+// 「/kaigo」のように末尾の「/」がないと data/ の場所がずれるので付け直す
+if (!location.pathname.endsWith('/') && !/\.html?$/.test(location.pathname)) {
+  location.replace(location.pathname + '/' + location.search + location.hash);
+}
+const DATA_BASE = new URL('data/', location.href).href;
+
+// 利用者・家族にわかる言葉でまとめたサービスの分類（サービス名に含まれる言葉で振り分け）
+const GROUPS = [
+  { id: 'all', name: 'すべて', title: 'すべてのサービス' },
+  { id: 'consult', name: 'ケアマネ・相談', title: 'ケアマネ・相談の窓口' },
+  { id: 'home', name: '自宅に来てもらう', title: '自宅に来てもらうサービス' },
+  { id: 'day', name: '日帰りで通う', title: '日帰りで通うサービス' },
+  { id: 'stay', name: '短期で泊まる', title: '短期で泊まるサービス' },
+  { id: 'live', name: '入所・住まい', title: '入所・住まいのサービス' },
+  { id: 'equip', name: '福祉用具', title: '福祉用具のサービス' },
+  { id: 'other', name: 'その他', title: 'その他のサービス' },
+];
+function groupIdOf(s) {
+  if (s.includes('福祉用具')) return 'equip';
+  if (s.includes('短期入所')) return 'stay';
+  if (s.includes('居宅介護支援') || s.includes('介護予防支援')) return 'consult';
+  if (s.startsWith('訪問') || s.includes('定期巡回') || s.includes('夜間対応')) return 'home';
+  if (s.includes('通所') || s.includes('小規模多機能') || s.includes('複合型')) return 'day';
+  if (s.includes('施設') || s.includes('共同生活') || s.includes('介護医療院')) return 'live';
+  return 'other';
+}
+
+const PAGE = window.matchMedia('(min-width: 960px)').matches ? 50 : 30;
+const $ = id => document.getElementById(id);
+let meta = null;          // data/index.json
+let prefIndex = null;     // data/{pref}/index.json
+let items = [];           // 選んだ市区町村の事業所
+let state = { pref: '', city: '', ward: '', group: 'all', q: '', shown: PAGE };
+const cache = new Map();
+
+async function getJSON(path) {
+  if (cache.has(path)) return cache.get(path);
+  const res = await fetch(DATA_BASE + path);
+  if (!res.ok) throw new Error(res.status + ' ' + path);
+  const json = await res.json();
+  cache.set(path, json);
+  return json;
+}
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function mapUrl(i) {
+  const q = (i.lat && i.lng) ? `${i.lat},${i.lng}` : i.a;
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+}
+function groupOf(id) { return GROUPS.find(g => g.id === id) || GROUPS[0]; }
+function inGroup(i, id) { return id === 'all' || i.g === id; }
+function inWard(i) { return !state.ward || i.w === state.ward; }
+function cityInfo() { return prefIndex && prefIndex.cities.find(c => c.code === state.city); }
+function placeName(withPref = true) {
+  const c = cityInfo();
+  if (!c) return prefIndex && withPref ? prefIndex.pref : '';
+  return (withPref ? prefIndex.pref + ' ' : '') + c.name + (state.ward ? ' ' + state.ward : '');
+}
+
+// ---------- 地域の選択 ----------
+function fillPrefs() {
+  $('pref').innerHTML = '<option value="">都道府県を選ぶ</option>' +
+    meta.prefs.map(p => `<option value="${p.code}">${esc(p.name)}（${p.count.toLocaleString()}件）</option>`).join('');
+}
+function fillCities() {
+  const sel = $('city');
+  if (!prefIndex) { sel.innerHTML = '<option value="">市区町村を選ぶ</option>'; sel.disabled = true; return; }
+  sel.innerHTML = '<option value="">市区町村を選ぶ</option>' +
+    prefIndex.cities.map(c => `<option value="${c.code}">${esc(c.name)}（${c.count.toLocaleString()}件）</option>`).join('');
+  sel.disabled = false;
+}
+
+async function selectPref(code, keep = false) {
+  state.pref = code; prefIndex = null; items = [];
+  if (!keep) { state.city = ''; state.ward = ''; state.group = 'all'; }
+  $('pref').value = code;
+  fillCities();
+  if (code) {
+    $('city').disabled = true;
+    try { prefIndex = await getJSON(code + '/index.json'); }
+    catch (e) { showError(); return; }
+    if (state.pref !== code) return;
+    fillCities();
+    if (keep && state.city && !prefIndex.cities.some(c => c.code === state.city)) state.city = '';
+    if (prefIndex.cities.length === 1 && !state.city) state.city = prefIndex.cities[0].code;
+  }
+  $('kouhyou-link').href = 'https://www.kaigokensaku.mhlw.go.jp/' + (code ? code + '/' : '');
+  await selectCity(state.city, true);
+}
+
+async function selectCity(code, keep = false) {
+  state.city = code; items = [];
+  if (!keep) { state.ward = ''; state.group = 'all'; state.q = ''; $('q').value = ''; }
+  $('city').value = code;
+  if (code) {
+    $('list').innerHTML = '<p class="loading">読み込んでいます…</p>';
+    $('welcome').classList.add('hidden');
+    try {
+      const d = await getJSON(`${state.pref}/${code}.json`);
+      if (state.city !== code) return;
+      const F = meta.fields;
+      items = d.items.map(r => {
+        const o = {};
+        F.forEach((f, k) => { o[f] = r[k] == null ? '' : r[k]; });
+        o.s = d.types[r[0]] || '';
+        o.g = groupIdOf(o.s);
+        return o;
+      });
+    } catch (e) { showError(); return; }
+  }
+  const c = cityInfo();
+  if (!c || !(c.wards || []).some(w => w.name === state.ward)) state.ward = '';
+  state.shown = PAGE;
+  render();
+}
+
+function showError() {
+  $('list').innerHTML = '<p class="empty">データを読み込めませんでした。<br>通信状態を確かめて、ページを開き直してください。</p>';
+}
+
+// ---------- 表示 ----------
+function renderWards() {
+  const c = cityInfo();
+  const wards = c && c.wards ? c.wards : [];
+  $('ward-field').classList.toggle('hidden', !wards.length);
+  if (!wards.length) { $('wards').innerHTML = ''; return; }
+  const base = items.filter(i => inGroup(i, state.group));
+  const chip = (name, label, n) =>
+    `<button type="button" class="chip" data-ward="${esc(name)}" aria-pressed="${state.ward === name}"><span class="name">${esc(label)}</span><span class="n">${n}件</span></button>`;
+  $('wards').innerHTML = chip('', '市全体', base.length) +
+    wards.map(w => chip(w.name, w.name, base.filter(i => i.w === w.name).length)).join('');
+}
+function renderGroups() {
+  const base = items.filter(inWard);
+  $('groups').innerHTML = GROUPS.map(g => {
+    const n = base.filter(i => inGroup(i, g.id)).length;
+    if (g.id !== 'all' && !items.some(i => i.g === g.id)) return '';
+    return `<button type="button" class="chip" data-group="${g.id}" aria-pressed="${state.group === g.id}"><span class="name">${g.name}</span><span class="n">${n}件</span></button>`;
+  }).join('');
+}
+
+function filtered() {
+  const words = state.q.trim().split(/[\s　]+/).filter(Boolean);
+  return items.filter(i => inGroup(i, state.group) && inWard(i) &&
+    words.every(w => [i.n, i.k, i.a, i.corp, i.s].join(' ').includes(w)));
+}
+
+function card(i) {
+  const days = i.days ? i.days.replace(/,/g, '・') : '';
+  const hp = /^https?:\/\//.test(i.url || '');
+  const place = i.w || '';
+  return `
+  <article class="card">
+    <div class="tags"><span class="tag">${esc(i.s)}</span>${place ? `<span class="tag area">${esc(place)}</span>` : ''}</div>
+    <h3>${esc(i.n)}</h3>
+    ${i.corp ? `<p class="corp">${esc(i.corp)}</p>` : ''}
+    <dl class="meta">
+      <dt>住所</dt><dd>${esc(i.a)}</dd>
+      ${i.tel ? `<dt>電話</dt><dd><span class="tel-num">${esc(i.tel)}</span></dd>` : ''}
+      ${i.fax ? `<dt>FAX</dt><dd>${esc(i.fax)}</dd>` : ''}
+      ${days ? `<dt>営業日</dt><dd>${esc(days)}</dd>` : ''}
+    </dl>
+    <div class="actions">
+      ${i.tel ? `<a class="btn primary" href="tel:${esc(i.tel)}">電話する</a>
+      <button type="button" class="btn" data-copy="${esc(i.tel)}">番号をコピー</button>` : ''}
+      <a class="btn" href="${esc(mapUrl(i))}" target="_blank" rel="noopener">地図</a>
+      ${hp ? `<a class="btn" href="${esc(i.url)}" target="_blank" rel="noopener">HP</a>` : ''}
+    </div>
+  </article>`;
+}
+
+function render() {
+  const ready = !!(state.city && items.length);
+  ['group-field', 'q-field', 'result-section'].forEach(id => $(id).classList.toggle('hidden', !ready));
+  $('welcome').classList.toggle('hidden', !!state.city);
+  const c = cityInfo();
+  const place = c ? c.name + (state.ward ? state.ward : '') : '';
+  $('title-place').textContent = place ? place + 'の' : (prefIndex ? prefIndex.pref + 'の' : '全国の');
+  $('eyebrow').textContent = prefIndex ? (prefIndex.pref + (c ? ' ' + c.name : '')) : '全国版';
+  document.title = (place ? place + 'の' : '') + SITE_TITLE + (place ? '' : '（全国版）');
+  $('source').textContent = meta
+    ? `出典：${meta.source}（${meta.asOf}）` + (c ? `／${c.name}${state.ward ? state.ward : ''} ${items.filter(inWard).length.toLocaleString()} 件` : `／全国 ${meta.count.toLocaleString()} 件`)
+    : '';
+  renderWards();
+  if (!ready) {
+    $('list').innerHTML = state.city ? '<p class="empty">この地域の事業所データがありません。</p>' : '';
+    $('more').hidden = true;
+    updateUrl(); updateShare();
+    return;
+  }
+  if (state.group !== 'all' && !items.some(i => i.g === state.group)) state.group = 'all';
+  renderGroups();
+  const list = filtered();
+  const g = groupOf(state.group);
+  $('result-title').textContent = (state.ward ? state.ward + 'の' : '') + g.title;
+  $('count').textContent = list.length.toLocaleString();
+  $('list').innerHTML = list.length
+    ? list.slice(0, state.shown).map(card).join('')
+    : `<p class="empty">条件に合う事業所が見つかりませんでした。<br>種類を「すべて」にするか、別の言葉で探してみてください。</p>`;
+  const more = $('more');
+  more.hidden = list.length <= state.shown;
+  more.textContent = `もっと見る（残り ${Math.max(0, list.length - state.shown).toLocaleString()} 件）`;
+  updateUrl(); updateShare();
+}
+
+// ---------- URL（選んだ地域をURLに残す。共有・QRコードもこの地域で開く） ----------
+function query(full) {
+  const p = new URLSearchParams();
+  if (state.pref) p.set('pref', state.pref);
+  if (state.city) p.set('city', state.city);
+  if (state.ward) {
+    const w = (cityInfo()?.wards || []).find(w => w.name === state.ward);
+    p.set('ward', w && w.code ? w.code : state.ward);
+  }
+  if (full && state.group !== 'all') p.set('g', state.group);
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+function updateUrl() {
+  try { history.replaceState(null, '', location.pathname + query(true)); } catch (_) {}
+}
+function shareUrl() { return SITE_URL + query(false); }
+
+// ---------- 操作 ----------
+$('pref').addEventListener('change', e => selectPref(e.target.value));
+$('city').addEventListener('change', e => selectCity(e.target.value));
+$('wards').addEventListener('click', e => {
+  const b = e.target.closest('[data-ward]'); if (!b) return;
+  state.ward = b.dataset.ward; state.shown = PAGE; render();
+});
+$('groups').addEventListener('click', e => {
+  const b = e.target.closest('[data-group]'); if (!b) return;
+  state.group = b.dataset.group; state.shown = PAGE; render();
+});
+$('q').addEventListener('input', e => { state.q = e.target.value; state.shown = PAGE; render(); });
+$('more').addEventListener('click', () => { state.shown += PAGE; render(); });
+
+// 電話番号のコピー（パソコンから固定電話でかける時用）
+$('list').addEventListener('click', async e => {
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  const num = b.dataset.copy;
+  try {
+    await navigator.clipboard.writeText(num);
+    b.textContent = 'コピーしました';
+  } catch (_) {
+    const span = b.closest('.card').querySelector('.tel-num');
+    const r = document.createRange(); r.selectNodeContents(span);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    b.textContent = '番号を選択しました';
+  }
+  b.classList.add('copied');
+  setTimeout(() => { b.textContent = '番号をコピー'; b.classList.remove('copied'); }, 2000);
+});
+
+// ---------- QRコード・共有 ----------
+function makeQR(text) {
+  if (typeof qrcode !== 'function') return null;
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  return qr;
+}
+function qrSvg(qr) {
+  const n = qr.getModuleCount(), m = 2, size = n + m * 2;
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+  return `<svg class="qr" viewBox="0 0 ${size} ${size}" role="img" aria-label="このページのQRコード" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#ffffff"/><path fill="#064e3b" d="${d}"/></svg>`;
+}
+function updateShare() {
+  const url = shareUrl();
+  $('share-url').textContent = url;
+  const place = placeName(false);
+  $('qr-note').innerHTML = place
+    ? `スマホのカメラで読み取ると<br>${esc(place)}の検索ページが開きます`
+    : 'スマホのカメラで読み取ると<br>このページが開きます';
+  const qr = makeQR(url);
+  document.querySelectorAll('[data-qr]').forEach(el => { el.innerHTML = qr ? qrSvg(qr) : ''; });
+}
+
+function drawQR(ctx, qr, x, y, size) {
+  const n = qr.getModuleCount(), cell = size / (n + 4);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = '#064e3b';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
+    if (qr.isDark(r, c)) ctx.fillRect(Math.floor(x + (c + 2) * cell), Math.floor(y + (r + 2) * cell), Math.ceil(cell), Math.ceil(cell));
+}
+function fitText(ctx, text, maxW, size, weight, family) {
+  let s = size;
+  do { ctx.font = `${weight} ${s}px ${family}`; s -= 2; } while (ctx.measureText(text).width > maxW && s > 20);
+}
+async function saveImage(withCard) {
+  const url = shareUrl();
+  const qr = makeQR(url);
+  if (!qr) return;
+  try { await document.fonts.ready; } catch (_) {}
+  const cv = document.createElement('canvas');
+  const ctx = cv.getContext('2d');
+  const place = placeName(false);
+  if (!withCard) {
+    cv.width = cv.height = 1000; drawQR(ctx, qr, 0, 0, 1000);
+  } else {
+    const W = 1200, H = 1600; cv.width = W; cv.height = H;
+    const disp = '"Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif';
+    const body = '"Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif';
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#047857'; ctx.fillRect(0, 0, W, 28);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#047857'; ctx.font = `700 40px ${body}`;
+    ctx.fillText(prefIndex && place ? prefIndex.pref : '全国版', W / 2, 130);
+    ctx.fillStyle = '#1e293b';
+    const line1 = place ? place.replace(/\s/g, '') + 'の' : '全国の';
+    fitText(ctx, line1, W - 160, 96, 700, disp); ctx.fillText(line1, W / 2, 250);
+    fitText(ctx, '介護保険事業所検索', W - 160, 96, 700, disp); ctx.fillText('介護保険事業所検索', W / 2, 370);
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 4;
+    const qs = 720, qx = (W - qs) / 2, qy = 440;
+    ctx.strokeRect(qx - 20, qy - 20, qs + 40, qs + 40);
+    drawQR(ctx, qr, qx, qy, qs);
+    ctx.fillStyle = '#1e293b'; ctx.font = `700 46px ${body}`;
+    ctx.fillText('スマホのカメラで読み取ってください', W / 2, 1290);
+    ctx.fillStyle = '#64748b'; fitText(ctx, url, W - 120, 30, 400, body);
+    ctx.fillText(url, W / 2, 1360);
+    ctx.font = `400 30px ${body}`;
+    ctx.fillText('サービスの種類・事業所名で探せます（無料）', W / 2, 1420);
+    ctx.fillStyle = '#047857'; ctx.font = `700 30px ${body}`;
+    ctx.fillText('制作：sonosann Web&AIサポート', W / 2, 1530);
+  }
+  const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = `kaigo-search_${[state.pref, state.city, state.ward ? (cityInfo()?.wards || []).find(w => w.name === state.ward)?.code : ''].filter(Boolean).join('-') || 'zenkoku'}_${withCard ? 'qr-card' : 'qr'}.png`; // 日本語のファイル名は端末によって化けるので英数字にする
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 10000);
+}
+
+function openDialog(id) {
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  const d = $(id);
+  if (d && typeof d.showModal === 'function') d.showModal();
+  else location.hash = 'share';
+}
+document.addEventListener('click', async e => {
+  const opener = e.target.closest('[data-open]');
+  if (opener) { e.preventDefault(); openDialog(opener.dataset.open); return; }
+
+  const closer = e.target.closest('[data-close]');
+  if (closer) { const d = closer.closest('dialog'); if (d) d.close(); }
+  if (e.target.tagName === 'DIALOG') e.target.close();
+
+  if (e.target.closest('[data-reset]')) {
+    e.target.closest('dialog')?.close();
+    await selectPref('');
+    $('pref').focus();
+    return;
+  }
+
+  const shareBtn = e.target.closest('[data-share]');
+  if (shareBtn) {
+    const url = shareUrl();
+    const place = placeName(false);
+    const title = (place ? place.replace(/\s/g, '') + 'の' : '') + SITE_TITLE;
+    if (navigator.share) {
+      try { await navigator.share({ title, text: title + '。サービスの種類や事業所名で探せます。', url }); } catch (_) {}
+    } else {
+      window.open('https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(url), '_blank', 'noopener');
+    }
+    return;
+  }
+
+  const copyBtn = e.target.closest('[data-copy-url]');
+  if (copyBtn) {
+    const label = copyBtn.textContent;
+    try { await navigator.clipboard.writeText(shareUrl()); copyBtn.textContent = 'コピーしました'; }
+    catch (_) { copyBtn.textContent = 'URLを長押しでコピーしてください'; }
+    setTimeout(() => { copyBtn.textContent = label; }, 2000);
+    return;
+  }
+
+  if (e.target.closest('[data-save-card]')) { saveImage(true); return; }
+  if (e.target.closest('[data-save-qr]')) { saveImage(false); return; }
+});
+
+// ---------- 起動 ----------
+(async function init() {
+  updateShare();
+  try { meta = await getJSON('index.json'); }
+  catch (e) { $('welcome').innerHTML = '<strong>データを読み込めませんでした</strong><span>通信状態を確かめて、ページを開き直してください。</span>'; return; }
+  fillPrefs();
+  const p = new URLSearchParams(location.search);
+  const pref = p.get('pref') || '';
+  if (pref && meta.prefs.some(x => x.code === pref)) {
+    state.city = p.get('city') || '';
+    const g = p.get('g');
+    if (GROUPS.some(x => x.id === g)) state.group = g;
+    await selectPref(pref, true);
+    const c = cityInfo();
+    if (c) {
+      const wq = p.get('ward');
+      const w = (c.wards || []).find(w => w.code === wq || w.name === wq);
+      if (w) { state.ward = w.name; render(); }
+    } else if (state.city) {
+      state.city = ''; render();
+    }
+  } else {
+    render();
+  }
+})();
+</script>
+
+</body>
+</html>
