@@ -3,7 +3,7 @@
 都道府県 → 市区町村（政令指定都市は区も）を選んで、介護保険事業所を
 サービスの種類・事業所名・住所・法人名で探せる検索ページです。
 
-- 公開URL：https://start-reposi.vercel.app/kaigo/
+- 公開URL：https://start-reposi.vercel.app/kaigo
 - 元のURL（GitHub Pages）：https://sonosannworks.github.io/kaigo-search/
 - 出典：厚生労働省「介護サービス情報公表システム」オープンデータ
   https://www.mhlw.go.jp/stf/kaigo-kouhyou_opendata.html

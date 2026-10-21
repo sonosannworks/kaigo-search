@@ -436,14 +436,13 @@ dialog.sheet::backdrop { background: rgba(15, 23, 42, .45); }
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 // 公開先のURL（QRコード・共有ボタンで使う）
-const SITE_URL = 'https://start-reposi.vercel.app/kaigo/';
+const SITE_URL = 'https://start-reposi.vercel.app/kaigo';
 const SITE_TITLE = '介護保険事業所検索';
 
-// 「/kaigo」のように末尾の「/」がないと data/ の場所がずれるので付け直す
-if (!location.pathname.endsWith('/') && !/\.html?$/.test(location.pathname)) {
-  location.replace(location.pathname + '/' + location.search + location.hash);
-}
-const DATA_BASE = new URL('data/', location.href).href;
+// データの場所。「/kaigo」のように末尾に「/」がないURLでも「/kaigo/data/」を見に行く
+const DATA_BASE = (location.pathname.endsWith('/') || /\.html?$/.test(location.pathname))
+  ? new URL('data/', location.href).href
+  : location.origin + location.pathname + '/data/';
 
 // 利用者・家族にわかる言葉でまとめたサービスの分類（サービス名に含まれる言葉で振り分け）
 const GROUPS = [
