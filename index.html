@@ -95,6 +95,7 @@ h1 {
 .result-head h2 { font-family: var(--font-display); font-size: 21px; line-height: 1.4; margin: 0; text-wrap: balance; }
 .count { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .count b { color: var(--ink); font-size: 26px; }
+.group-note { margin: 10px 0 0; padding: 10px 14px; font-size: 14px; line-height: 1.7; color: var(--tag); background: var(--tag-soft); border-radius: 12px; }
 
 .list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .card {
@@ -362,6 +363,7 @@ dialog.sheet::backdrop { background: rgba(15, 23, 42, .45); }
       <h2 id="result-title">すべてのサービス</h2>
       <span class="count"><b id="count">0</b> 件</span>
     </div>
+    <p class="group-note" id="group-note" hidden></p>
   </section>
 
   <div id="welcome" class="welcome">
@@ -451,6 +453,8 @@ const GROUPS = [
   { id: 'home', name: '自宅に来てもらう', title: '自宅に来てもらうサービス' },
   { id: 'day', name: '日帰りで通う', title: '日帰りで通うサービス' },
   { id: 'stay', name: '短期で泊まる', title: '短期で泊まるサービス' },
+  { id: 'multi', name: 'まとめて支える', title: 'まとめて支えるサービス（通い・泊まり・訪問）',
+    note: '小規模多機能型居宅介護・看護小規模多機能型居宅介護・定期巡回・随時対応型訪問介護看護・夜間対応型訪問介護です。地域密着型サービスのため、原則として、その市町村にお住まいの方が利用できます。' },
   { id: 'live', name: '入所・住まい', title: '入所・住まいのサービス' },
   { id: 'equip', name: '福祉用具', title: '福祉用具のサービス' },
   { id: 'other', name: 'その他', title: 'その他のサービス' },
@@ -459,8 +463,9 @@ function groupIdOf(s) {
   if (s.includes('福祉用具')) return 'equip';
   if (s.includes('短期入所')) return 'stay';
   if (s.includes('居宅介護支援') || s.includes('介護予防支援')) return 'consult';
-  if (s.startsWith('訪問') || s.includes('定期巡回') || s.includes('夜間対応')) return 'home';
-  if (s.includes('通所') || s.includes('小規模多機能') || s.includes('複合型')) return 'day';
+  if (s.includes('小規模多機能') || s.includes('複合型') || s.includes('定期巡回') || s.includes('夜間対応')) return 'multi';
+  if (s.startsWith('訪問')) return 'home';
+  if (s.includes('通所')) return 'day';
   if (s.includes('施設') || s.includes('共同生活') || s.includes('介護医療院')) return 'live';
   return 'other';
 }
@@ -636,6 +641,8 @@ function render() {
   const g = groupOf(state.group);
   $('result-title').textContent = (state.ward ? state.ward + 'の' : '') + g.title;
   $('count').textContent = list.length.toLocaleString();
+  $('group-note').textContent = g.note || '';
+  $('group-note').hidden = !g.note;
   $('list').innerHTML = list.length
     ? list.slice(0, state.shown).map(card).join('')
     : `<p class="empty">条件に合う事業所が見つかりませんでした。<br>種類を「すべて」にするか、別の言葉で探してみてください。</p>`;
